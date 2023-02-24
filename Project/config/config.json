@@ -1,0 +1,28 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "adesso-search-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/adessoSearch/AdessoSearchWebPart.js",
+          "manifest": "./src/webparts/adessoSearch/AdessoSearchWebPart.manifest.json"
+        }
+      ]
+    },
+    "adesso-results-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/adessoResults/AdessoResultsWebPart.js",
+          "manifest": "./src/webparts/adessoResults/AdessoResultsWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "AdessoSearchWebPartStrings": "lib/webparts/adessoSearch/loc/{locale}.js",
+    "AdessoResultsWebPartStrings": "lib/webparts/adessoResults/loc/{locale}.js",
+    "PropertyControlStrings": "node_modules/@pnp/spfx-property-controls/lib/loc/{locale}.js"
+  }
+}
