@@ -20,6 +20,9 @@
     "group": { "default": "Other" },
     "title": { "default": "adessoSearch" },
     "description": { "default": "adessoSearch description" },
-    "officeFabricIconFontName": "Page"
+    "officeFabricIconFontName": "Page",
+    "properties": {
+      "description": "adesso Search"
+    }
   }]
 }

@@ -7,4 +7,6 @@ export interface IAdessoSearchProps {
   webUrl: string;
   optionKey: string;
   selectedOptionName: string;
+  multiselectvalue:string[];
+  
 }

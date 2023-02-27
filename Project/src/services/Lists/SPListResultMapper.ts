@@ -18,10 +18,24 @@ export class SPListResultMapper{
         };
     }
 
-    public static idToName(list: IPropertyPaneDropdownOption[], id: string): string{ 
+   /* public static idToName(list: IPropertyPaneDropdownOption[], id: string): string{ 
         if (list.length == 0) 
             return "";
         if (list[0].key == id) return list[0].text;
         return this.idToName(list.splice(1), id);
-    }
+    }*/
+
+    public static idToName(list: IPropertyPaneDropdownOption[], id: string): string {
+        if (!id || id.trim() === '') {
+          return '';
+        }
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].key === id) {
+            return list[i].text;
+          }
+        }
+        return '';
+      }
+      
+      
 }

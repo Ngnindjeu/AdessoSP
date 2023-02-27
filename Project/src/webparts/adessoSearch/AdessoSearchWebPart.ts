@@ -3,14 +3,13 @@ import * as ReactDom from "react-dom";
 import { Version } from "@microsoft/sp-core-library";
 import {
   IPropertyPaneConfiguration,
-  PropertyPaneDropdown,
+  //PropertyPaneDropdown,
   IPropertyPaneDropdownOption,
   //PropertyPaneTextField,
-  IPropertyPaneField,
+  //IPropertyPaneField,
   // PropertyPaneFieldType,
-  IPropertyPaneDropdownProps,
- //IPropertyPaneCustomFieldProps,
-  PropertyPaneTextField
+  //IPropertyPaneDropdownProps,
+  //IPropertyPaneCustomFieldProps,
 } from "@microsoft/sp-property-pane";
 import { BaseClientSideWebPart } from "@microsoft/sp-webpart-base";
 import { IReadonlyTheme } from "@microsoft/sp-component-base";
@@ -21,28 +20,34 @@ import { IAdessoSearchProps } from "./components/IAdessoSearchProps";
 import { SPListService } from "../../services/Lists/SPListService";
 import { SPListResultMapper } from "../../services/Lists/SPListResultMapper";
 
-import { CustomTextField } from './components/CustomField';
+import { PropertyPaneMultiselectDropdown } from '../controls/PropertyPaneMultiselectDropdown';
 
 export interface IAdessoSearchWebPartProps {
   description: string;
   webLists: [];
   optionKey: string;
   selectedOptionName: string;
+  multiselectvalue: string[];
 }
 import {
   IDynamicDataPropertyDefinition,
-  IDynamicDataCallables
-} from '@microsoft/sp-dynamic-data';
+  IDynamicDataCallables,
+} from "@microsoft/sp-dynamic-data";
+import { update } from "lodash";
+//import { IDropdownOption } from "office-ui-fabric-react";
+//import { update } from "lodash";
 
 interface IData {
   result: string;
 }
 
-export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSearchWebPartProps> implements IDynamicDataCallables {
+export default class AdessoSearchWebPart
+  extends BaseClientSideWebPart<IAdessoSearchWebPartProps>
+  implements IDynamicDataCallables {
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = "";
   private lists: IPropertyPaneDropdownOption[];
-  private listsDropdownDisabled: boolean = true;
+  //private listsDropdownDisabled: boolean = true;
   public rawSpLists: any[] = [];
   public spLists: IPropertyPaneDropdownOption[] = [];
   private _selectedEvent: IData;
@@ -61,6 +66,16 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
               this.spLists = [];
 
               if (lists["value"].length > 0) {
+                let all = {
+                  Id: "all",
+                  Title: "Search All",
+                  BaseTemplate: 100,
+                  RootFolder: {
+                    ServiceRelativeUrl: "",
+                  },
+                };
+                // unshift search all to lists value.
+                lists["value"].unshift(all);
                 lists["value"].map((rawList: any) => {
                   this.spLists.push(
                     SPListResultMapper.MapToIPropertyPaneDropdownOption(rawList)
@@ -95,7 +110,9 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
         userDisplayName: this.context.pageContext.user.displayName,
         webUrl: this.context.pageContext.web.absoluteUrl,
         optionKey: this.properties.optionKey,
-        selectedOptionName: this.properties.selectedOptionName
+        selectedOptionName: this.properties.selectedOptionName,
+        multiselectvalue: this.properties.multiselectvalue,
+
       }
     );
 
@@ -145,7 +162,7 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
         reject: (error: any) => void
       ) => {
         //setTimeout(() => {
-          resolve(this.spLists);
+        resolve(this.spLists);
         //}, 2000);
       }
     );
@@ -162,17 +179,14 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
             {
               groupName: strings.BasicGroupName,
               groupFields: [
-                this._getDropdownField(),
-                PropertyPaneTextField('title', {
-                  label: 'Blabla'
+               // this._getDropdownField(),
+                new PropertyPaneMultiselectDropdown('multiselectvalue', {
+                  label: 'Multiselect List',
+                  loadOptions: this.loadLists.bind(this),
+                  multiselect: true,
+                  onPropertyChange: this.onPropertyChange.bind(this),
+                  selectedKeys: this.properties.multiselectvalue,
                 }),
-                new CustomTextField("whatever", {
-                  label: "Custom Field Label",
-                  value: "was geht ab",
-                  onValueChanged:(value: string) => {
-                    console.log(value, "Hey");
-                  }
-                })
               ],
             },
           ],
@@ -181,16 +195,39 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
     };
   }
 
-  private _getDropdownField(): IPropertyPaneField<IPropertyPaneDropdownProps> {
+  private onPropertyChange(propertyPath: string, newValue: any): void {
+    // Update the property value in the web part properties
+    update(this.properties, propertyPath, (): any => { return newValue; });
+  
+    // If the property being changed is multiselectvalue, update the selectedOptionName accordingly
+    if (propertyPath === 'multiselectvalue') {
+      const copiedArray = [...this.lists];
+      const selectedNames = newValue.map((id: string) => {
+        return SPListResultMapper.idToName(copiedArray, id);
+      });
+      this.properties.selectedOptionName = selectedNames.join(', ');
+    } else {
+      const copiedArray = [...this.lists];
+      this.properties.selectedOptionName = SPListResultMapper.idToName(
+        copiedArray,
+        newValue
+      );
+    }
+  
+    // Re-render the web part
+    this.render();
+  }  
+
+  /*private _getDropdownField(): IPropertyPaneField<IPropertyPaneDropdownProps> {
     return PropertyPaneDropdown("optionKey", {
       label: strings.ListNameFieldLabel,
       options: this.lists,
       disabled: this.listsDropdownDisabled,
     });
-  }
+  }*/
 
   protected onPropertyPaneConfigurationStart(): void {
-    this.listsDropdownDisabled = !this.lists;
+   // this.listsDropdownDisabled = !this.lists;
 
     if (this.lists) {
       return;
@@ -198,23 +235,30 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
 
     this.context.statusRenderer.displayLoadingIndicator(
       this.domElement,
-      'lists'
+      "lists"
     );
 
-    this.loadLists()
-      .then((listOptions: IPropertyPaneDropdownOption[]): void => {
+    this.loadLists().then(
+      (listOptions: IPropertyPaneDropdownOption[]): void => {
         this.lists = listOptions;
-        this.listsDropdownDisabled = false;
+       // this.listsDropdownDisabled = false;
         this.context.propertyPane.refresh();
         this.context.statusRenderer.clearLoadingIndicator(this.domElement);
         this.render();
         this.render(); // force again the webpart to the left-side to be rended
       }
-      );
+    );
   }
-  protected onPropertyPaneFieldChanged(propertyPath: string, oldValue: any, newValue: any): void {
+  protected onPropertyPaneFieldChanged(
+    propertyPath: string,
+    oldValue: any,
+    newValue: any
+  ): void {
     const copiedArray = [...this.lists];
-    this.properties.selectedOptionName = SPListResultMapper.idToName(copiedArray, this.properties.optionKey);
+    this.properties.selectedOptionName = SPListResultMapper.idToName(
+      copiedArray,
+      this.properties.optionKey
+    );
   }
 
   /*private renderCustomField(): IPropertyPaneCustomFieldProps {
@@ -254,21 +298,18 @@ export default class AdessoSearchWebPart extends BaseClientSideWebPart<IAdessoSe
   }*/
 
   public getPropertyDefinitions(): ReadonlyArray<IDynamicDataPropertyDefinition> {
-    return [
-      { id: 'result', title: 'Result' },
-    ];
+    return [{ id: "result", title: "Result" }];
   }
   /**
- * Return the current value of the specified dynamic data set
- * @param propertyId ID of the dynamic data set to retrieve the value for
- */
+   * Return the current value of the specified dynamic data set
+   * @param propertyId ID of the dynamic data set to retrieve the value for
+   */
   public getPropertyValue(propertyId: string): IData {
     switch (propertyId) {
-      case 'result':
+      case "result":
         return this._selectedEvent;
     }
 
-    throw new Error('Bad property id');
+    throw new Error("Bad property id");
   }
-
 }

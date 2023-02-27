@@ -23,7 +23,7 @@ export default class AdessoSearch extends React.Component<
   }
 
   private initSearch = (searchText: string): void => {
-    SPSearchService.Search(this.props.webUrl, searchText, this.props.optionKey)
+    SPSearchService.Search(this.props.webUrl, searchText, this.props.multiselectvalue)
       .then((results) => {
         this.setState({ searchResults: results });
       })
